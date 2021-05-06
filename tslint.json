@@ -5,7 +5,12 @@
     ],
     "jsRules": {},
     "rules": {
-        "trailing-comma": [ false ]
+        "trailing-comma": [ false ],
+        "no-console": false,
+        "unified-signatures": false,
+        "prefer-for-of": true,
+        "no-shadowed-variable": false
+
     },
     "rulesDirectory": []
 }
