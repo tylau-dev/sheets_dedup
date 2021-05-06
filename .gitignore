@@ -1,4 +1,4 @@
 node_modules
 .env
 reactapp/node_modules
-credentials.json
+/credentials.json
