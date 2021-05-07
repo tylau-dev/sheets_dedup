@@ -13,7 +13,6 @@ function App() {
   const [accessToken, setAccessToken] = useState<string>('')
   const [selectSheet, setSelectSheet] = useState<string>('')
   const [resultMessage, setResultMessage] = useState<string>('')
-  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
 
   // Functions setting the states from the input retrieved from the Googlelogin child component
   const saveSheetID = (list: Array<string>) => {
@@ -47,7 +46,12 @@ function App() {
 
     const fetchResultMessage = await result.json()
     console.log(fetchResultMessage)
-    setResultMessage(fetchResultMessage.toString())
+    if (fetchResultMessage === "ok") {
+      setResultMessage(fetchResultMessage.toString())
+    }
+    else {
+      setResultMessage("Error while deduplicating the Sheeets")
+    }    
   }
 
   return (

@@ -16,12 +16,11 @@ const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const path_1 = __importDefault(require("path"));
-const google_auth_library_1 = require("google-auth-library");
-const node_fetch_1 = __importDefault(require("node-fetch"));
+const drive_1 = __importDefault(require("./drive"));
+const sheets_1 = __importDefault(require("./sheets"));
 dotenv_1.default.config();
 const app = express_1.default();
 const port = process.env.PORT; // default port to listen
-const oauthClient = new google_auth_library_1.OAuth2Client(process.env.CLIENT_ID, process.env.CLIENT_SECRET);
 app.use(express_1.default.static(path_1.default.join(__dirname, 'reactapp/build')));
 app.use(body_parser_1.default.urlencoded({ extended: false }));
 app.use(express_1.default.json({
@@ -37,180 +36,179 @@ app.options('*', (req, res) => {
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.send("ok");
 }));
-// Route for consuming the Access Token and sending back the list of spreadsheet files of a given user
-app.post("/drive", (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const accessToken = req.body.token;
-    const driveData = yield node_fetch_1.default(`https://www.googleapis.com/drive/v3/files`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
-    const driveDataJson = yield driveData.json();
-    const driveFiles = driveDataJson.files;
-    const spreadSheetList = [];
-    for (const element of driveFiles) {
-        if (element.mimeType === 'application/vnd.google-apps.spreadsheet') {
-            spreadSheetList.push(element.id);
-        }
-    }
-    res.json(spreadSheetList);
-}));
-// Route fetching data from a Worksheets and applying the deduplication logic
-// WIP
-app.post("/sheets", (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        console.log("test");
-        const accessTokenBody = req.body.token;
-        const selectSheet = req.body.sheet;
-        const sheetsData = yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessTokenBody}`
-            }
-        });
-        const sheetsDataJSON = yield sheetsData.json();
-        // Gets Sheets_ID
-        const gridID = [];
-        for (const sheetsProps of sheetsDataJSON.sheets) {
-            if (sheetsProps.properties.title === "A") {
-                gridID.splice(0, 0, sheetsProps.properties.sheetId);
-            }
-            else if (sheetsProps.properties.title === "B") {
-                gridID.splice(1, 0, sheetsProps.properties.sheetId);
-            }
-        }
-        if (gridID.length !== 2) {
-            throw new Error('Incorrect number of sheets (missing named sheet "A" or "B"?)');
-        }
-        let gridDataA;
-        let gridDataB;
-        // Fetch each Sheet data
-        for (const [index, sheetId] of gridID.entries()) {
-            const gridBody = JSON.stringify({ "dataFilters": [{ "gridRange": { "sheetId": sheetId } }] });
-            const gridData = yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchGetByDataFilter`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessTokenBody}`,
-                },
-                body: gridBody
-            });
-            const gridDataJSON = yield gridData.json();
-            if (index === 0) {
-                gridDataA = gridDataJSON.valueRanges[0].valueRange.values;
-            }
-            else {
-                gridDataB = gridDataJSON.valueRanges[0].valueRange.values;
-            }
-        }
-        // Create new Sheet named "C"
-        const newSheetBody = JSON.stringify({
-            "requests": [
-                {
-                    "addSheet": {
-                        "properties": {
-                            "title": "C"
-                        }
-                    }
-                }
-            ]
-        });
-        const newSheet = yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}:batchUpdate`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessTokenBody}`,
-            },
-            body: newSheetBody
-        });
-        const newSheetJson = yield newSheet.json();
-        const newSheetId = newSheetJson.replies[0].addSheet.properties.sheetId;
-        // First row of GridData = Label + Separate it from the rest of the data set
-        const labelA = gridDataA[0];
-        gridDataA.shift();
-        const labelB = gridDataB[0];
-        gridDataB.shift();
-        // Remap each Row of the Grids in objects in the format {label: value}
-        const arrayObjectA = gridDataA.map((row) => {
-            const newObj = {};
-            row.forEach((element, index) => {
-                let elementModif = element;
-                if (element === '') {
-                    elementModif = null;
-                }
-                const keyModif = labelA[index];
-                newObj[keyModif] = elementModif;
-            });
-            return newObj;
-        });
-        const arrayObjectB = gridDataB.map((row) => {
-            const newObj = {};
-            row.forEach((element, index) => {
-                let elementModif = element;
-                if (element === '') {
-                    elementModif = null;
-                }
-                const keyModif = labelB[index];
-                newObj[keyModif] = elementModif;
-            });
-            return newObj;
-        });
-        // Merge the 2 dataset together
-        const dedupArray = [];
-        for (const row of arrayObjectA) {
-            // Find corresponding object in Grid B
-            let matchObj = {};
-            arrayObjectB.forEach((element) => {
-                if (element.firstName === row.firstName && element.lastName === row.lastName && element.email === row.email) {
-                    matchObj = element;
-                }
-            });
-            // Merge the 2 objects together
-            const mergedObj = {};
-            const keysObj1 = Object.keys(row);
-            keysObj1.forEach(key1 => {
-                mergedObj[key1] = row[key1] || matchObj[key1];
-            });
-            const keysObj2 = Object.keys(matchObj);
-            keysObj2.forEach(key2 => {
-                if (!keysObj1.includes(key2)) {
-                    mergedObj[key2] = matchObj[key2];
-                }
-            });
-            dedupArray.push(mergedObj);
-        }
-        // Reformat the data to match the required output
-        const finalLabel = Array.from(new Set([...labelA, ...labelB]));
-        const finalArray = dedupArray.map((element) => {
-            return Object.values(element);
-        });
-        finalArray.unshift(finalLabel);
-        console.log(finalArray);
-        const batchUpdateBodyJson = JSON.stringify({
-            "valueInputOption": "RAW",
-            "data": [
-                {
-                    "dataFilter": {
-                        "gridRange": {
-                            "sheetId": newSheetId
-                        }
-                    },
-                    "values": finalArray
-                }
-            ]
-        });
-        yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchUpdateByDataFilter`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessTokenBody}`,
-            },
-            body: batchUpdateBodyJson
-        });
-        res.json("ok");
-    }
-    catch (err) {
-        res.json(err);
-    }
-}));
+app.use('/', drive_1.default);
+app.use('/', sheets_1.default);
+// // Route for consuming the Access Token and sending back the list of spreadsheet files of a given user
+// app.post("/drive", async (req, res, next) => {
+//     // Get request to retrieve the Google Drive Data
+//     const accessToken = req.body.token
+//     const driveData = await fetch(`https://www.googleapis.com/drive/v3/files`, {
+//         method: 'GET',
+//         headers: {
+//             'Authorization': `Bearer ${accessToken}`
+//         }
+//     })
+//     const driveDataJson = await driveData.json()
+//     const driveFiles = driveDataJson.files
+//     // Filter by mimeType to get only the Spreadsheet files
+//     const spreadSheetList = []
+//     for (const element of driveFiles) {
+//         if (element.mimeType === 'application/vnd.google-apps.spreadsheet') {
+//             spreadSheetList.push(element.id)
+//         }
+//     }
+//     // Spreadsheetlist sent back as a Response
+//     res.json(spreadSheetList);
+// });
+// // Route fetching data from a Worksheets and applying the deduplication logic
+// app.post("/sheets", async (req, res) => {
+//     try {
+//         // Retrieving the Access Token and the Selected Sheet from the Body of the request
+//         const accessTokenBody = req.body.token
+//         const selectSheet = req.body.sheet
+//         // Get request to retrieve the Sheets Data
+//         const sheetsData = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}`, {
+//             method: 'GET',
+//             headers: {
+//                 'Authorization': `Bearer ${accessTokenBody}`
+//             }
+//         })
+//         const sheetsDataJSON = await sheetsData.json()
+//         // Gets Sheets_ID (called GridID)
+//         const gridID: string[] = []
+//         for (const sheetsProps of sheetsDataJSON.sheets) {
+//             if (sheetsProps.properties.title === "A") {
+//                 gridID.splice(0, 0, sheetsProps.properties.sheetId)
+//             }
+//             else if (sheetsProps.properties.title === "B") {
+//                 gridID.splice(1, 0, sheetsProps.properties.sheetId)
+//             }
+//         }
+//         if (gridID.length !== 2) {
+//             throw new Error('Incorrect number of sheets (missing named sheet "A" or "B"?)')
+//         }
+//         let gridDataA
+//         let gridDataB
+//         // Fetch each Sheet/Grid Data
+//         for (const [index, sheetId] of gridID.entries()) {
+//             const gridBody = JSON.stringify({ "dataFilters": [{ "gridRange": { "sheetId": sheetId } }] })
+//             const gridData = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchGetByDataFilter`, {
+//                 method: 'POST',
+//                 headers: {
+//                     'Authorization': `Bearer ${accessTokenBody}`,
+//                 },
+//                 body: gridBody
+//             })
+//             const gridDataJSON = await gridData.json()
+//             if (index === 0) {
+//                 gridDataA = gridDataJSON.valueRanges[0].valueRange.values
+//             }
+//             else {
+//                 gridDataB = gridDataJSON.valueRanges[0].valueRange.values
+//             }
+//         }
+//         // Create new Sheet named "C"
+//         const newSheetBody = JSON.stringify({
+//             "requests": [
+//                 {
+//                     "addSheet": {
+//                         "properties": {
+//                             "title": "C"
+//                         }
+//                     }
+//                 }
+//             ]
+//         })
+//         const newSheet = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}:batchUpdate`, {
+//             method: 'POST',
+//             headers: {
+//                 'Authorization': `Bearer ${accessTokenBody}`,
+//             },
+//             body: newSheetBody
+//         })
+//         const newSheetJson = await newSheet.json()
+//         // Retrieve the newly created Sheet ID
+//         const newSheetId = newSheetJson.replies[0].addSheet.properties.sheetId
+//         // First row of GridData = Label + Separate it from the rest of the data set
+//         const labelA = gridDataA[0]
+//         gridDataA.shift()
+//         const labelB = gridDataB[0]
+//         gridDataB.shift()
+//         // Remap each Row of the Grid Data as an Array of Objects {label: value}
+//         const arrayObjectA = convertArrayToObject(gridDataA, labelA)
+//         const arrayObjectB = convertArrayToObject(gridDataB, labelB)
+//         // Merge the 2 dataset together
+//         const dedupArray = []
+//         for (const row of arrayObjectA) {
+//             // Find corresponding object in Grid B
+//             let matchObj:any = {}
+//             arrayObjectB.forEach((element:any) => {
+//                 if (element.firstName === row.firstName && element.lastName === row.lastName && element.email === row.email) {
+//                     matchObj = element
+//                 }
+//             })
+//             // Merge the 2 Objects together
+//             const mergedObj:any = {}
+//             const keysObj1 = Object.keys(row)
+//             keysObj1.forEach(key1 => {
+//                 mergedObj[key1] = row[key1] || matchObj[key1]
+//             })
+//             const keysObj2 = Object.keys(matchObj)
+//             keysObj2.forEach(key2 => {
+//                 if (!keysObj1.includes(key2)) {
+//                     mergedObj[key2] = matchObj[key2]
+//                 }
+//             })
+//             // Store the result in the dedupArray variable
+//             dedupArray.push(mergedObj)
+//         }
+//         // Reformat the data to match the required output
+//         const finalLabel = Array.from(new Set([...labelA, ...labelB]))
+//         const finalArray = dedupArray.map((element:any) => {
+//             return Object.values(element)
+//         })
+//         finalArray.unshift(finalLabel)
+//         // Body values for writing in the newly created Sheet
+//         const batchUpdateBodyJson = JSON.stringify({
+//             "valueInputOption": "RAW",
+//             "data": [
+//               {
+//                 "dataFilter": {
+//                   "gridRange": {
+//                     "sheetId": newSheetId
+//                   }
+//                 },
+//                 "values": finalArray
+//               }
+//             ]
+//           })
+//         // POST request to update the Sheet
+//         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchUpdateByDataFilter`, {
+//             method: 'POST',
+//             headers: {
+//                 'Authorization': `Bearer ${accessTokenBody}`,
+//             },
+//             body: batchUpdateBodyJson
+//         })
+//         res.json("ok");
+//     }
+//     catch (err) {
+//         res.json(err)
+//     }
+// });
+// // Function to convert Array in the {label: value} format
+// const convertArrayToObject = (array: Array<any>, label: Array<string>) => {
+//     const newObj:any = {}
+//     array.forEach((element: any, index: number) => {
+//         let elementModif = element
+//         if (element === '') {
+//             elementModif = null
+//         }
+//         const keyModif:string = label[index]
+//         newObj[keyModif] = elementModif
+//     })
+//     return newObj
+// }
 // start the Express server
 app.listen(port, () => {
     // tslint:disable-next-line:no-console
