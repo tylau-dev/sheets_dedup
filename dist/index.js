@@ -103,9 +103,7 @@ app.post("/sheets", (req, res, next) => __awaiter(void 0, void 0, void 0, functi
                 gridDataB = gridDataJSON.valueRanges[0].valueRange.values;
             }
         }
-        console.log(gridDataA);
-        console.log(gridDataB);
-        // Create new Sheet
+        // Create new Sheet named "C"
         const newSheetBody = JSON.stringify({
             "requests": [
                 {
@@ -117,21 +115,96 @@ app.post("/sheets", (req, res, next) => __awaiter(void 0, void 0, void 0, functi
                 }
             ]
         });
-        yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}:batchUpdate`, {
+        const newSheet = yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}:batchUpdate`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessTokenBody}`,
             },
             body: newSheetBody
         });
-        // Use GoogleSpreadsheet API connexion to manage the changes on Google Sheet
-        // Spreadsheets needs to be available in Public
-        // const doc = new GoogleSpreadsheet(selectSheet);
-        // // doc.useApiKey(process.env.API_KEY);
-        // doc.useOAuth2Client(accessTokenBody);
-        // await doc.loadInfo()
-        // // console.log(doc)
-        // await doc.updateProperties({ title: 'renamed doc' });
+        const newSheetJson = yield newSheet.json();
+        const newSheetId = newSheetJson.replies[0].addSheet.properties.sheetId;
+        // First row of GridData = Label + Separate it from the rest of the data set
+        const labelA = gridDataA[0];
+        gridDataA.shift();
+        const labelB = gridDataB[0];
+        gridDataB.shift();
+        // Remap each Row of the Grids in objects in the format {label: value}
+        const arrayObjectA = gridDataA.map((row) => {
+            const newObj = {};
+            row.forEach((element, index) => {
+                let elementModif = element;
+                if (element === '') {
+                    elementModif = null;
+                }
+                const keyModif = labelA[index];
+                newObj[keyModif] = elementModif;
+            });
+            return newObj;
+        });
+        const arrayObjectB = gridDataB.map((row) => {
+            const newObj = {};
+            row.forEach((element, index) => {
+                let elementModif = element;
+                if (element === '') {
+                    elementModif = null;
+                }
+                const keyModif = labelB[index];
+                newObj[keyModif] = elementModif;
+            });
+            return newObj;
+        });
+        // Merge the 2 dataset together
+        const dedupArray = [];
+        for (const row of arrayObjectA) {
+            // Find corresponding object in Grid B
+            let matchObj = {};
+            arrayObjectB.forEach((element) => {
+                if (element.firstName === row.firstName && element.lastName === row.lastName && element.email === row.email) {
+                    matchObj = element;
+                }
+            });
+            // Merge the 2 objects together
+            const mergedObj = {};
+            const keysObj1 = Object.keys(row);
+            keysObj1.forEach(key1 => {
+                mergedObj[key1] = row[key1] || matchObj[key1];
+            });
+            const keysObj2 = Object.keys(matchObj);
+            keysObj2.forEach(key2 => {
+                if (!keysObj1.includes(key2)) {
+                    mergedObj[key2] = matchObj[key2];
+                }
+            });
+            dedupArray.push(mergedObj);
+        }
+        // Reformat the data to match the required output
+        const finalLabel = Array.from(new Set([...labelA, ...labelB]));
+        const finalArray = dedupArray.map((element) => {
+            return Object.values(element);
+        });
+        finalArray.unshift(finalLabel);
+        console.log(finalArray);
+        const batchUpdateBodyJson = JSON.stringify({
+            "valueInputOption": "RAW",
+            "data": [
+                {
+                    "dataFilter": {
+                        "gridRange": {
+                            "sheetId": newSheetId
+                        }
+                    },
+                    "values": finalArray
+                }
+            ]
+        });
+        yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchUpdateByDataFilter`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessTokenBody}`,
+            },
+            body: batchUpdateBodyJson
+        });
         res.json("ok");
     }
     catch (err) {
