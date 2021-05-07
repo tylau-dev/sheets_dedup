@@ -1,59 +1,49 @@
-import { access } from 'fs'
-import React, { useState, useEffect } from 'react'
-import ReactDOM from 'react-dom'
+import React from 'react'
 import { GoogleLogin } from 'react-google-login'
-import { Redirect } from 'react-router-dom'
+import {clientID} from '../statics/id'
 
-interface SignupValues {
-    email: string,
-    password: string,
-    confirmPassword: string,
-    name: string,
-}
+function Googlelogin(props: any) {
 
-
-function Googlelogin() {
-
+    // Function handling a successful connexion 
     const onSuccess = async (res: any) => {
-        console.log(res)
-        var token_id = res.tokenObj.id_token
-        console.log(token_id)
-
+        // Retrieve the access_token
         const access_token = res.tokenObj.access_token
-        console.log(access_token)
 
-        // const data = await fetch(`https://www.googleapis.com/auth/drive.appdata?access_token=${access_token}`)
-        // console.log(data)
-        const sendToken = await fetch("auth", {
+        // Send back the access token to the parent component
+        props.saveAccessToken(access_token)
+
+        // Send the access token to retrieve the list of google sheets ID
+        const sendToken = await fetch("drive", {
             method: "POST",
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: `token=${access_token}`
         })
 
-
-        // console.log(sendToken)
-
+        const spreadSheetList = await sendToken.json()
+        // Send back the list of sheets ID to parent component
+        props.saveSheetID(spreadSheetList)
+        props.hideButton()
+        
         console.log('[Login Succsss] currentUser:', res)
     }
 
+    // Function handling connexion failure
     const onFailure = (res: any) => {
         console.log('[Login Failed] res', res)
     }
 
     return (
-        <>
             <GoogleLogin
-                clientId="42021385954-ak083djj9438q5feilta4on1spgm1cuf.apps.googleusercontent.com"
+                clientId={clientID}
                 render={renderProps => (
-                    <button onClick={renderProps.onClick} disabled={renderProps.disabled}>This is my custom Google button</button>
+                    <button onClick={renderProps.onClick} disabled={renderProps.disabled}>Connect API</button>
                 )}
                 buttonText="Login"
                 onSuccess={onSuccess}
                 onFailure={onFailure}
                 cookiePolicy={'single_host_origin'}
-                scope="https://www.googleapis.com/drive/v3/files"
+                scope="https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/spreadsheets"
             />
-        </>
     )
 }
 const scope = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.appdata"
