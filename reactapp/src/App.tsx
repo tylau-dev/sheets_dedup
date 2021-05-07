@@ -46,6 +46,7 @@ function App() {
     })
 
     const fetchResultMessage = await result.json()
+    console.log(fetchResultMessage)
     setResultMessage(fetchResultMessage.toString())
   }
 

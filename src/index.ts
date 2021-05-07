@@ -8,6 +8,7 @@ import path from 'path';
 import { OAuth2Client } from "google-auth-library";
 import fetch from "node-fetch";
 import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { Console } from "console";
 
 dotenv.config()
 
@@ -71,13 +72,63 @@ app.post("/sheets", async (req, res, next) => {
         })
         const sheetsDataJSON = await sheetsData.json()
 
-        // Use GoogleSpreadsheet API connexion to manage the changes on Google Sheet
-        // Spreadsheets needs to be available in Public
-        // const doc = new GoogleSpreadsheet(selectSheet);
-        // await doc.useApiKey(process.env.API_KEY);
-        // await doc.loadInfo()
-        // console.log(doc)
-        // await doc.updateProperties({ title: 'renamed doc' });
+        // Gets Sheets_ID
+        const gridID: string[] = []
+        for (const sheetsProps of sheetsDataJSON.sheets) {
+            if (sheetsProps.properties.title === "A") {
+                gridID.splice(0, 0, sheetsProps.properties.sheetId)
+            }
+            else if (sheetsProps.properties.title === "B") {
+                gridID.splice(1, 0, sheetsProps.properties.sheetId)
+            }
+        }
+
+        if (gridID.length !== 2) {
+            throw new Error('Incorrect number of sheets (missing named sheet "A" or "B"?)')
+        }
+        let gridDataA
+        let gridDataB
+        // Fetch each Sheet data
+        for (const [index, sheetId] of gridID.entries()) {
+            const gridBody = JSON.stringify({ "dataFilters": [{ "gridRange": { "sheetId": sheetId } }] })
+
+            const gridData = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchGetByDataFilter`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessTokenBody}`,
+                },
+                body: gridBody
+            })
+            const gridDataJSON = await gridData.json()
+            if (index === 0) {
+                gridDataA = gridDataJSON.valueRanges[0].valueRange.values
+            }
+            else {
+                gridDataB = gridDataJSON.valueRanges[0].valueRange.values
+            }
+        }
+        console.log(gridDataA)
+        console.log(gridDataB)
+
+        // Create new Sheet named "C"
+        const newSheetBody = JSON.stringify({
+            "requests": [
+                {
+                    "addSheet": {
+                        "properties": {
+                            "title": "C"
+                        }
+                    }
+                }
+            ]
+        })
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}:batchUpdate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessTokenBody}`,
+            },
+            body: newSheetBody
+        })
 
 
         res.json("ok");

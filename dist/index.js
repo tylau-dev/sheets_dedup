@@ -70,7 +70,68 @@ app.post("/sheets", (req, res, next) => __awaiter(void 0, void 0, void 0, functi
             }
         });
         const sheetsDataJSON = yield sheetsData.json();
-        console.log(sheetsDataJSON);
+        // Gets Sheets_ID
+        const gridID = [];
+        for (const sheetsProps of sheetsDataJSON.sheets) {
+            if (sheetsProps.properties.title === "A") {
+                gridID.splice(0, 0, sheetsProps.properties.sheetId);
+            }
+            else if (sheetsProps.properties.title === "B") {
+                gridID.splice(1, 0, sheetsProps.properties.sheetId);
+            }
+        }
+        if (gridID.length !== 2) {
+            throw new Error('Incorrect number of sheets (missing named sheet "A" or "B"?)');
+        }
+        let gridDataA;
+        let gridDataB;
+        // Fetch each Sheet data
+        for (const [index, sheetId] of gridID.entries()) {
+            const gridBody = JSON.stringify({ "dataFilters": [{ "gridRange": { "sheetId": sheetId } }] });
+            const gridData = yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}/values:batchGetByDataFilter`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessTokenBody}`,
+                },
+                body: gridBody
+            });
+            const gridDataJSON = yield gridData.json();
+            if (index === 0) {
+                gridDataA = gridDataJSON.valueRanges[0].valueRange.values;
+            }
+            else {
+                gridDataB = gridDataJSON.valueRanges[0].valueRange.values;
+            }
+        }
+        console.log(gridDataA);
+        console.log(gridDataB);
+        // Create new Sheet
+        const newSheetBody = JSON.stringify({
+            "requests": [
+                {
+                    "addSheet": {
+                        "properties": {
+                            "title": "C"
+                        }
+                    }
+                }
+            ]
+        });
+        yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}:batchUpdate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessTokenBody}`,
+            },
+            body: newSheetBody
+        });
+        // Use GoogleSpreadsheet API connexion to manage the changes on Google Sheet
+        // Spreadsheets needs to be available in Public
+        // const doc = new GoogleSpreadsheet(selectSheet);
+        // // doc.useApiKey(process.env.API_KEY);
+        // doc.useOAuth2Client(accessTokenBody);
+        // await doc.loadInfo()
+        // // console.log(doc)
+        // await doc.updateProperties({ title: 'renamed doc' });
         res.json("ok");
     }
     catch (err) {
