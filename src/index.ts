@@ -71,6 +71,14 @@ app.post("/sheets", async (req, res, next) => {
         })
         const sheetsDataJSON = await sheetsData.json()
 
+        // Use GoogleSpreadsheet API connexion to manage the changes on Google Sheet
+        // Spreadsheets needs to be available in Public
+        // const doc = new GoogleSpreadsheet(selectSheet);
+        // await doc.useApiKey(process.env.API_KEY);
+        // await doc.loadInfo()
+        // console.log(doc)
+        // await doc.updateProperties({ title: 'renamed doc' });
+
 
         res.json("ok");
     }

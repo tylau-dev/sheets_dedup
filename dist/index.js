@@ -18,7 +18,6 @@ const body_parser_1 = __importDefault(require("body-parser"));
 const path_1 = __importDefault(require("path"));
 const google_auth_library_1 = require("google-auth-library");
 const node_fetch_1 = __importDefault(require("node-fetch"));
-const google_spreadsheet_1 = require("google-spreadsheet");
 dotenv_1.default.config();
 const app = express_1.default();
 const port = process.env.PORT; // default port to listen
@@ -64,20 +63,14 @@ app.post("/sheets", (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         console.log("test");
         const accessTokenBody = req.body.token;
         const selectSheet = req.body.sheet;
-        // const sheetsData = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}`, {
-        //     method: 'GET',
-        //     headers: {
-        //         'Authorization': `Bearer ${accessToken}`
-        //     }
-        // })
-        // const sheetsDataJSON = await sheetsData.json()
-        // Use GoogleSpreadsheet API connexion to manage the changes on Google Sheet
-        // Spreadsheets needs to be available in Public
-        const doc = new google_spreadsheet_1.GoogleSpreadsheet(selectSheet);
-        yield doc.useApiKey(process.env.API_KEY);
-        yield doc.loadInfo();
-        console.log(doc);
-        yield doc.updateProperties({ title: 'renamed doc' });
+        const sheetsData = yield node_fetch_1.default(`https://sheets.googleapis.com/v4/spreadsheets/${selectSheet}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessTokenBody}`
+            }
+        });
+        const sheetsDataJSON = yield sheetsData.json();
+        console.log(sheetsDataJSON);
         res.json("ok");
     }
     catch (err) {
