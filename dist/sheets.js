@@ -94,13 +94,14 @@ sheetRouter.post("/sheets", (req, res) => __awaiter(void 0, void 0, void 0, func
         const arrayObjectB = convertArrayToObject(gridDataB, labelB);
         // Merge the 2 dataset together
         const dedupArray = [];
+        console.log(arrayObjectA);
         for (const row of arrayObjectA) {
             // Find corresponding object in Grid B
-            const matchObj = {};
+            let matchObj = {};
             arrayObjectB.forEach((element) => {
-                // if (element.firstName === row.firstName && element.lastName === row.lastName && element.email === row.email) {
-                //     matchObj = element
-                // }
+                if (element.firstName === row.firstName && element.lastName === row.lastName && element.email === row.email) {
+                    matchObj = element;
+                }
             });
             // Merge the 2 Objects together
             const mergedObj = {};

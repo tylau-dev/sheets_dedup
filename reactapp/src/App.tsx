@@ -1,9 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
 import Googlelogin from './component/Googlelogin';
-import { Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 
 
 function App() {
@@ -50,7 +47,7 @@ function App() {
       setResultMessage(fetchResultMessage.toString())
     }
     else {
-      setResultMessage("Error while deduplicating the Sheeets")
+      setResultMessage("Error while deduplicating the Sheeets (make sure that no Sheets named 'C' exists)")
     }    
   }
 

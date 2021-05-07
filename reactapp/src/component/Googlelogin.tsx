@@ -1,9 +1,7 @@
 import React from 'react'
 import { GoogleLogin } from 'react-google-login'
-import {clientID} from '../statics/id'
 
 function Googlelogin(props: any) {
-
     // Function handling a successful connexion 
     const onSuccess = async (res: any) => {
         // Retrieve the access_token
@@ -34,7 +32,7 @@ function Googlelogin(props: any) {
 
     return (
             <GoogleLogin
-                clientId={clientID}
+                clientId="42021385954-ak083djj9438q5feilta4on1spgm1cuf.apps.googleusercontent.com"
                 render={renderProps => (
                     <button onClick={renderProps.onClick} disabled={renderProps.disabled}>Connect API</button>
                 )}
@@ -46,6 +44,5 @@ function Googlelogin(props: any) {
             />
     )
 }
-const scope = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.appdata"
 
 export default Googlelogin
