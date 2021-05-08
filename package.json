@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "node dist/index.js",
-    "heroku-postbuild": "cd reactapp && npm install && npm install --only=dev --no-shrinkwrap && npm run build"
-  },
+    "prebuild": "tslint -c tslint.json -p tsconfig.json --fix",
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "node ."},
   "keywords": [],
   "author": "",
   "license": "ISC",
