@@ -11,7 +11,7 @@ function Googlelogin(props: any) {
         props.saveAccessToken(access_token)
 
         // Send the access token to retrieve the list of google sheets ID
-        const sendToken = await fetch("drive", {
+        const sendToken = await fetch("https://obscure-taiga-01883.herokuapp.com/drive", {
             method: "POST",
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: `token=${access_token}`
