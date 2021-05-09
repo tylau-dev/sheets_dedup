@@ -16,13 +16,21 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json({
     type: ['application/json', 'text/plain']
 }))
-app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Access-Control-Allow-Methods', 'POST');
-    res.send();
+// app.options('*', (req, res) => {
+//     res.setHeader('Access-Control-Allow-Origin', '*');
+//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+//     res.setHeader('Access-Control-Allow-Methods', 'POST');
+//     res.send();
+// });
+// app.use(cors()) 
+app.use(function(req, res, next) {
+    res.setHeader('Access-Control-Allow-Origin', "*");
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
+    next();
 });
-app.use(cors()) 
+
+
 
 // Default route handler
 app.get("/", async (req, res) => {
