@@ -32,6 +32,18 @@ app.options('*', (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'POST');
     res.send();
 });
+// app.options('/drive', function (req, res) {
+//   res.setHeader("Access-Control-Allow-Origin", "*");
+//   res.setHeader('Access-Control-Allow-Methods', '*');
+//   res.setHeader("Access-Control-Allow-Headers", "*");
+//   res.end();
+// });
+// app.options('/sheets', function (req, res) {
+//   res.setHeader("Access-Control-Allow-Origin", "*");
+//   res.setHeader('Access-Control-Allow-Methods', '*');
+//   res.setHeader("Access-Control-Allow-Headers", "*");
+//   res.end();
+// });
 // Default route handler
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     res.send("ok");
@@ -41,6 +53,6 @@ app.use('/', sheets_1.default);
 // start the Express server
 app.listen(port, () => {
     // tslint:disable-next-line:no-console
-    console.log(`server started at http://localhost:${port}`);
+    console.log(`server started`);
 });
 //# sourceMappingURL=index.js.map
