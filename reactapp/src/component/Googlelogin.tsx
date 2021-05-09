@@ -12,12 +12,14 @@ function Googlelogin(props: any) {
 
         // Send the access token to retrieve the list of google sheets ID
         const sendToken = await fetch("https://obscure-taiga-01883.herokuapp.com/drive", {
+            mode: "no-cors",
             method: "POST",
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: `token=${access_token}`
         })
 
         const spreadSheetList = await sendToken.json()
+        console.log(spreadSheetList)
         // Send back the list of sheets ID to parent component
         props.saveSheetID(spreadSheetList)
         props.hideButton()
