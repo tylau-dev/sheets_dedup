@@ -36,6 +36,7 @@ function App() {
   // Function sending the access token and the Sheet ID to the back
   const handleDeduplicate = async () => {
     const result = await fetch('https://obscure-taiga-01883.herokuapp.com/sheets', {
+      mode: 'no-cors',
       method: "POST",
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `token=${accessToken}&sheet=${selectSheet}`
