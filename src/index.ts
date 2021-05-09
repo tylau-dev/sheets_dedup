@@ -23,24 +23,19 @@ app.use(express.json({
 //     res.send();
 // });
 
-const options: cors.CorsOptions = {
-    allowedHeaders: [
-      'Origin',
-      'X-Requested-With',
-      'Content-Type',
-      'Accept',
-      'X-Access-Token',
-    ],
-    credentials: true,
-    methods: 'GET,HEAD,OPTIONS,PUT,PATCH,POST,DELETE',
-    origin: "https://sheetdedupggprod.herokuapp.com",
-    preflightContinue: false,
-  };
-  
-  //use cors middleware
-  app.use(cors(options));
-  
+app.options('/drive', function (req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader('Access-Control-Allow-Methods', '*');
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.end();
+});
 
+app.options('/sheets', function (req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader('Access-Control-Allow-Methods', '*');
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.end();
+});
 
 // Default route handler
 app.get("/", async (req, res) => {
