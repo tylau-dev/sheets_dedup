@@ -42,7 +42,7 @@ function Googlelogin(props: any) {
                 onSuccess={onSuccess}
                 onFailure={onFailure}
                 cookiePolicy={'single_host_origin'}
-                scope="https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/spreadsheets"
+                scope="https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets"
             />
     )
 }

@@ -41,7 +41,6 @@ function App() {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `token=${accessToken}&sheet=${selectSheet}`
     })
-
     const fetchResultMessage = await result.json()
     console.log(fetchResultMessage)
     if (fetchResultMessage === "ok") {
